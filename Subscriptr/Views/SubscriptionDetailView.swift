@@ -111,8 +111,11 @@ struct SubscriptionDetailView: View {
     private var detailsSection: some View {
         Section("Details") {
             LabeledContent("Category") {
-                Label(subscription.category.rawValue, systemImage: subscription.category.icon)
-                    .foregroundStyle(Color(hexString: subscription.category.color))
+                HStack(spacing: 4) {
+                    Image(systemName: subscription.category.icon)
+                    Text(subscription.category.rawValue)
+                }
+                .foregroundStyle(Color(hexString: subscription.category.color))
             }
 
             LabeledContent("Started", value: subscription.startDate, format: .dateTime.month().day().year())
