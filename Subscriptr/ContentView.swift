@@ -1,24 +1,34 @@
-//
-//  ContentView.swift
-//  Subscriptr
-//
-//  Created by Ermal Bujupaj on 4.5.26.
-//
-
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        TabView {
+            DashboardView()
+                .tabItem {
+                    Label("Dashboard", systemImage: "house")
+                }
+
+            Text("Subscriptions")
+                .tabItem {
+                    Label("Subs", systemImage: "list.bullet")
+                }
+
+            AnalyticsView()
+                .tabItem {
+                    Label("Analytics", systemImage: "chart.bar")
+                }
+
+            Text("Profile")
+                .tabItem {
+                    Label("Profile", systemImage: "person")
+                }
         }
-        .padding()
+        .tint(Color.accentColor)
     }
 }
 
 #Preview {
     ContentView()
+        .modelContainer(for: [Subscription.self, Card.self], inMemory: true)
 }

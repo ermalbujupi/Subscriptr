@@ -1,11 +1,5 @@
-//
-//  SubscriptrApp.swift
-//  Subscriptr
-//
-//  Created by Ermal Bujupaj on 4.5.26.
-//
-
 import SwiftUI
+import SwiftData
 
 @main
 struct SubscriptrApp: App {
@@ -13,5 +7,6 @@ struct SubscriptrApp: App {
         WindowGroup {
             ContentView()
         }
+        .modelContainer(for: [Subscription.self, Card.self])
     }
 }
