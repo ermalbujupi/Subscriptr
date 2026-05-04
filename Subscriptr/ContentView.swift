@@ -9,7 +9,7 @@ struct ContentView: View {
                     Label("Dashboard", systemImage: "house")
                 }
 
-            Text("Subscriptions")
+            SubscriptionsView()
                 .tabItem {
                     Label("Subs", systemImage: "list.bullet")
                 }
