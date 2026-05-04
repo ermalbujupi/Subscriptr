@@ -20,6 +20,9 @@ struct SubscriptionFormView: View {
     @State private var notes = ""
     @State private var selectedCard: Card?
     @State private var showingAddCard = false
+    @FocusState private var focusedField: Field?
+
+    private enum Field { case name, amount, notes }
 
     private var isEditing: Bool { subscription != nil }
     private var isValid: Bool { !name.trimmingCharacters(in: .whitespaces).isEmpty && parsedAmount != nil }
@@ -30,12 +33,14 @@ struct SubscriptionFormView: View {
             Form {
                 Section("Details") {
                     TextField("Name (e.g. Netflix)", text: $name)
+                        .focused($focusedField, equals: .name)
 
                     HStack {
                         Text(Locale.current.currencySymbol ?? "$")
                             .foregroundStyle(.secondary)
                         TextField("Amount", text: $amount)
                             .keyboardType(.decimalPad)
+                            .focused($focusedField, equals: .amount)
                     }
 
                     Picker("Billing Cycle", selection: $billingCycle) {
@@ -53,7 +58,7 @@ struct SubscriptionFormView: View {
                             Label(cat.rawValue, systemImage: cat.icon).tag(cat)
                         }
                     }
-                    .pickerStyle(.navigationLink)
+                    .pickerStyle(.menu)
                 }
 
                 Section("Payment") {
@@ -74,6 +79,7 @@ struct SubscriptionFormView: View {
                 Section("Notes") {
                     TextField("Optional notes", text: $notes, axis: .vertical)
                         .lineLimit(3...6)
+                        .focused($focusedField, equals: .notes)
                 }
 
                 if isEditing {
@@ -94,6 +100,13 @@ struct SubscriptionFormView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isEditing ? "Save" : "Add") { save() }
                         .disabled(!isValid)
+                }
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .toolbar {
+                ToolbarItem(placement: .keyboard) {
+                    Button("Done") { focusedField = nil }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
             }
             .sheet(isPresented: $showingAddCard) {
