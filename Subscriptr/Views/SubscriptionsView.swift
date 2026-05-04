@@ -6,84 +6,143 @@ struct SubscriptionsView: View {
     @Query(sort: \Subscription.name) private var subscriptions: [Subscription]
 
     @State private var showingAddSheet = false
-    @State private var selectedSubscription: Subscription?
     @State private var showCancelled = false
+    @State private var searchText = ""
+    @State private var selectedCategory: Category?
 
     private var displayed: [Subscription] {
-        showCancelled ? subscriptions : subscriptions.filter(\.isActive)
+        subscriptions.filter { sub in
+            let passesActive = showCancelled ? true : sub.isActive
+            let passesSearch = searchText.isEmpty || sub.name.localizedCaseInsensitiveContains(searchText)
+            let passesCategory = selectedCategory == nil || sub.category == selectedCategory
+            return passesActive && passesSearch && passesCategory
+        }
     }
 
     var body: some View {
         NavigationStack {
             Group {
                 if displayed.isEmpty {
-                    ContentUnavailableView(
-                        showCancelled ? "No Subscriptions" : "No Active Subscriptions",
-                        systemImage: "plus.circle",
-                        description: Text(showCancelled ? "Add your first subscription." : "All subscriptions are cancelled, or add a new one.")
-                    )
+                    emptyState
                 } else {
-                    List {
-                        ForEach(displayed) { subscription in
-                            SubscriptionListRow(subscription: subscription)
-                                .contentShape(Rectangle())
-                                .onTapGesture { selectedSubscription = subscription }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    if subscription.isActive {
-                                        Button(role: .destructive) {
-                                            cancel(subscription)
-                                        } label: {
-                                            Label("Cancel", systemImage: "xmark.circle")
-                                        }
-                                    }
-                                    Button(role: .destructive) {
-                                        delete(subscription)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                    .tint(.red)
-                                }
-                        }
-                    }
-                    .listStyle(.insetGrouped)
+                    list
                 }
             }
             .navigationTitle("Subscriptions")
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        showCancelled.toggle()
-                    } label: {
-                        Label(
-                            showCancelled ? "Hide Cancelled" : "Show Cancelled",
-                            systemImage: showCancelled ? "eye.slash" : "eye"
-                        )
-                        .labelStyle(.iconOnly)
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showingAddSheet = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                }
-            }
+            .searchable(text: $searchText, prompt: "Search subscriptions")
+            .toolbar { toolbar }
             .sheet(isPresented: $showingAddSheet) {
                 SubscriptionFormView()
-            }
-            .sheet(item: $selectedSubscription) { sub in
-                SubscriptionFormView(subscription: sub)
             }
         }
     }
 
-    private func cancel(_ subscription: Subscription) {
-        subscription.cancelledDate = .now
+    private var emptyState: some View {
+        ContentUnavailableView(
+            searchText.isEmpty ? "No Subscriptions" : "No Results",
+            systemImage: searchText.isEmpty ? "plus.circle" : "magnifyingglass",
+            description: Text(
+                searchText.isEmpty
+                    ? (showCancelled ? "Add your first subscription." : "No active subscriptions.")
+                    : "Try a different search or filter."
+            )
+        )
     }
 
-    private func delete(_ subscription: Subscription) {
-        modelContext.delete(subscription)
+    private var list: some View {
+        List {
+            categoryFilterBar
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+
+            ForEach(displayed) { subscription in
+                NavigationLink(destination: SubscriptionDetailView(subscription: subscription)) {
+                    SubscriptionListRow(subscription: subscription)
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    if subscription.isActive {
+                        Button(role: .destructive) {
+                            subscription.cancelledDate = .now
+                        } label: {
+                            Label("Cancel", systemImage: "xmark.circle")
+                        }
+                        .tint(.orange)
+                    }
+                    Button(role: .destructive) {
+                        modelContext.delete(subscription)
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+    }
+
+    private var categoryFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                FilterChip(label: "All", isSelected: selectedCategory == nil) {
+                    selectedCategory = nil
+                }
+                ForEach(Category.allCases, id: \.self) { cat in
+                    FilterChip(
+                        label: cat.rawValue,
+                        icon: cat.icon,
+                        isSelected: selectedCategory == cat
+                    ) {
+                        selectedCategory = selectedCategory == cat ? nil : cat
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button {
+                showCancelled.toggle()
+            } label: {
+                Image(systemName: showCancelled ? "eye.slash" : "eye")
+            }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                showingAddSheet = true
+            } label: {
+                Image(systemName: "plus")
+            }
+        }
+    }
+}
+
+struct FilterChip: View {
+    let label: String
+    var icon: String? = nil
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.caption)
+                }
+                Text(label)
+                    .font(.subheadline.weight(isSelected ? .semibold : .regular))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(isSelected ? Color.accentColor : Color(.secondarySystemGroupedBackground))
+            .foregroundStyle(isSelected ? .white : .primary)
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .animation(.easeInOut(duration: 0.15), value: isSelected)
     }
 }
 

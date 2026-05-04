@@ -19,7 +19,7 @@ struct ContentView: View {
                     Label("Analytics", systemImage: "chart.bar")
                 }
 
-            Text("Profile")
+            ProfileView()
                 .tabItem {
                     Label("Profile", systemImage: "person")
                 }
