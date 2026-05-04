@@ -6,6 +6,11 @@ struct SubscriptionDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let subscription: Subscription
 
+    @Query(
+        filter: #Predicate<Subscription> { $0.cancelledDate == nil },
+        sort: \Subscription.name
+    ) private var activeSubscriptions: [Subscription]
+
     @State private var showingEdit = false
     @State private var showingCancelConfirm = false
     @State private var showingDeleteConfirm = false
@@ -45,6 +50,7 @@ struct SubscriptionDetailView: View {
         ) {
             Button("Cancel Subscription", role: .destructive) {
                 subscription.cancelledDate = .now
+                NotificationService.shared.removeReminders(for: subscription)
                 dismiss()
             }
             Button("Keep", role: .cancel) {}
@@ -74,7 +80,7 @@ struct SubscriptionDetailView: View {
                     .foregroundStyle(.white)
                     .frame(width: 60, height: 60)
                     .background(
-                        Color(hex: subscription.category.color)
+                        Color(hexString: subscription.category.color)
                             .opacity(subscription.isActive ? 1 : 0.4)
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 14))
@@ -106,7 +112,7 @@ struct SubscriptionDetailView: View {
         Section("Details") {
             LabeledContent("Category") {
                 Label(subscription.category.rawValue, systemImage: subscription.category.icon)
-                    .foregroundStyle(Color(hex: subscription.category.color))
+                    .foregroundStyle(Color(hexString: subscription.category.color))
             }
 
             LabeledContent("Started", value: subscription.startDate, format: .dateTime.month().day().year())

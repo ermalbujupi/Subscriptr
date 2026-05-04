@@ -5,6 +5,10 @@ struct SubscriptionFormView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \Card.name) private var cards: [Card]
+    @Query(
+        filter: #Predicate<Subscription> { $0.cancelledDate == nil },
+        sort: \Subscription.name
+    ) private var activeSubscriptions: [Subscription]
 
     var subscription: Subscription?
 
@@ -157,5 +161,8 @@ struct SubscriptionFormView: View {
             modelContext.insert(sub)
         }
         dismiss()
+        Task {
+            await NotificationService.shared.scheduleAll(for: activeSubscriptions)
+        }
     }
 }

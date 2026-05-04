@@ -7,22 +7,35 @@ struct DashboardView: View {
         sort: \Subscription.name
     ) private var activeSubscriptions: [Subscription]
 
+    private var totalMonthlySpend: Double {
+        activeSubscriptions.reduce(0) { $0 + $1.monthlyAmount }
+    }
+
+    private var upcomingRenewals: [Subscription] {
+        let horizon = Calendar.current.date(byAdding: .day, value: 7, to: .now) ?? .now
+        return activeSubscriptions
+            .filter { sub in
+                guard let next = sub.nextRenewalDate else { return false }
+                return next <= horizon
+            }
+            .sorted { ($0.nextRenewalDate ?? .distantFuture) < ($1.nextRenewalDate ?? .distantFuture) }
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     heroCard
-                    subscriptionList
+                    if !upcomingRenewals.isEmpty {
+                        upcomingSection
+                    }
+                    allSubscriptionsSection
                 }
                 .padding()
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Dashboard")
         }
-    }
-
-    private var totalMonthlySpend: Double {
-        activeSubscriptions.reduce(0) { $0 + $1.monthlyAmount }
     }
 
     private var heroCard: some View {
@@ -43,7 +56,7 @@ struct DashboardView: View {
         .padding(.vertical, 32)
         .background(
             LinearGradient(
-                colors: [Color.accentColor, Color.accentColor.opacity(0.8)],
+                colors: [Color.accentColor, Color.accentColor.opacity(0.75)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -51,7 +64,33 @@ struct DashboardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 
-    private var subscriptionList: some View {
+    private var upcomingSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Renewing Soon", systemImage: "bell.badge")
+                .font(.headline)
+                .foregroundStyle(.orange)
+
+            VStack(spacing: 0) {
+                ForEach(upcomingRenewals) { subscription in
+                    NavigationLink(destination: SubscriptionDetailView(subscription: subscription)) {
+                        UpcomingRenewalRow(subscription: subscription)
+                    }
+                    .buttonStyle(.plain)
+                    if subscription.id != upcomingRenewals.last?.id {
+                        Divider().padding(.leading, 52)
+                    }
+                }
+            }
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(Color.orange.opacity(0.3), lineWidth: 1)
+            )
+        }
+    }
+
+    private var allSubscriptionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Active Subscriptions")
                 .font(.headline)
@@ -64,12 +103,14 @@ struct DashboardView: View {
                 )
                 .frame(minHeight: 200)
             } else {
-                LazyVStack(spacing: 0) {
+                VStack(spacing: 0) {
                     ForEach(activeSubscriptions) { subscription in
-                        SubscriptionRowView(subscription: subscription)
+                        NavigationLink(destination: SubscriptionDetailView(subscription: subscription)) {
+                            SubscriptionRowView(subscription: subscription)
+                        }
+                        .buttonStyle(.plain)
                         if subscription.id != activeSubscriptions.last?.id {
-                            Divider()
-                                .padding(.leading, 52)
+                            Divider().padding(.leading, 52)
                         }
                     }
                 }
@@ -77,6 +118,44 @@ struct DashboardView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
         }
+    }
+}
+
+struct UpcomingRenewalRow: View {
+    let subscription: Subscription
+
+    private var daysUntilRenewal: Int? {
+        guard let next = subscription.nextRenewalDate else { return nil }
+        return Calendar.current.dateComponents([.day], from: .now, to: next).day
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: subscription.category.icon)
+                .font(.title3)
+                .foregroundStyle(.white)
+                .frame(width: 40, height: 40)
+                .background(Color(hexString: subscription.category.color))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(subscription.name)
+                    .font(.body.weight(.medium))
+
+                if let days = daysUntilRenewal {
+                    Text(days == 0 ? "Renews today" : days == 1 ? "Renews tomorrow" : "Renews in \(days) days")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
+            }
+
+            Spacer()
+
+            Text(subscription.amount, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
+                .font(.body.weight(.semibold))
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
 
@@ -89,7 +168,7 @@ struct SubscriptionRowView: View {
                 .font(.title3)
                 .foregroundStyle(.white)
                 .frame(width: 40, height: 40)
-                .background(Color(hex: subscription.category.color))
+                .background(Color(hexString: subscription.category.color))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
 
             VStack(alignment: .leading, spacing: 2) {
@@ -110,18 +189,6 @@ struct SubscriptionRowView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-    }
-}
-
-extension Color {
-    init(hex: String) {
-        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: hex).scanHexInt64(&int)
-        let r = Double((int >> 16) & 0xFF) / 255.0
-        let g = Double((int >> 8) & 0xFF) / 255.0
-        let b = Double(int & 0xFF) / 255.0
-        self.init(red: r, green: g, blue: b)
     }
 }
 

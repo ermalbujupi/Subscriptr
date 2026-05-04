@@ -89,7 +89,7 @@ struct AnalyticsView: View {
                         x: .value("Amount", item.total),
                         y: .value("Category", item.category.rawValue)
                     )
-                    .foregroundStyle(Color(hex: item.category.color))
+                    .foregroundStyle(Color(hexString: item.category.color))
                     .cornerRadius(4)
                     .annotation(position: .trailing) {
                         Text(item.total, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))

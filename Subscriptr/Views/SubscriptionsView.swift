@@ -155,7 +155,7 @@ struct SubscriptionListRow: View {
                 .font(.title3)
                 .foregroundStyle(.white)
                 .frame(width: 40, height: 40)
-                .background(Color(hex: subscription.category.color).opacity(subscription.isActive ? 1 : 0.4))
+                .background(Color(hexString: subscription.category.color).opacity(subscription.isActive ? 1 : 0.4))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
 
             VStack(alignment: .leading, spacing: 2) {
