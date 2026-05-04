@@ -21,6 +21,8 @@ struct DashboardView: View {
             .sorted { ($0.nextRenewalDate ?? .distantFuture) < ($1.nextRenewalDate ?? .distantFuture) }
     }
 
+    @State private var showingAddSheet = false
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -35,6 +37,9 @@ struct DashboardView: View {
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Dashboard")
+            .sheet(isPresented: $showingAddSheet) {
+                SubscriptionFormView()
+            }
         }
     }
 
@@ -99,9 +104,11 @@ struct DashboardView: View {
                 ContentUnavailableView(
                     "No Subscriptions",
                     systemImage: "plus.circle",
-                    description: Text("Add your first subscription to get started")
+                    description: Text("Tap to add your first subscription")
                 )
                 .frame(minHeight: 200)
+                .contentShape(Rectangle())
+                .onTapGesture { showingAddSheet = true }
             } else {
                 VStack(spacing: 0) {
                     ForEach(activeSubscriptions) { subscription in
